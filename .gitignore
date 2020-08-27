@@ -4,3 +4,4 @@
 .*.*.swo
 build/*
 _trial_temp/*
+.direnv/
