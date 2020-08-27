@@ -74,7 +74,7 @@ class RedisClient(RedisBase):
             res = {}
             if not values:
                 return res
-            for i in xrange(0, len(values) - 1, 2):
+            for i in range(0, len(values) - 1, 2):
                 res[values[i]] = values[i + 1]
             return res
         return self.getResponse().addCallback(post_process)
@@ -131,7 +131,7 @@ class RedisClient(RedisBase):
         unchanged.
         """
 
-        self._send('msetnx', *list(itertools.chain(*mapping.iteritems())))
+        self._send('msetnx', *list(itertools.chain(*iter(mapping.items()))))
         return self.getResponse()
 
     def mset(self, mapping, preserve=False):
@@ -142,7 +142,7 @@ class RedisClient(RedisBase):
             command = 'MSETNX'
         else:
             command = 'MSET'
-        self._send(command, *list(itertools.chain(*mapping.iteritems())))
+        self._send(command, *list(itertools.chain(*iter(mapping.items()))))
         return self.getResponse()
 
     def append(self, key, value):
@@ -225,7 +225,7 @@ class RedisClient(RedisBase):
         """
         Inspect the internals of Redis objects.
         @param key : The Redis key you want to inspect
-        @param refcount: Returns the number of refereces of the value
+        @param refcount: Returns the number of references of the value
                          associated with the specified key.
         @param encoding: Returns the kind of internal representation for
                          value.
@@ -304,7 +304,7 @@ class RedisClient(RedisBase):
         """
         Return a random key from the keyspace
         """
-        #raise NotImplementedError("Implemented but buggy, do not use.")
+        # raise NotImplementedError("Implemented but buggy, do not use.")
         self._send('RANDOMKEY')
         return self.getResponse()
 
@@ -566,7 +566,7 @@ class RedisClient(RedisBase):
 
     def brpop(self, keys, timeout=30):
         """
-        Issue a BRPOP - blockling list pop from the right.
+        Issue a BRPOP - blocking list pop from the right.
         @param keys is a list of one or more Redis keys
         @param timeout max number of seconds to block for
         """
@@ -655,7 +655,7 @@ class RedisClient(RedisBase):
         If the key does not exist or the list is already empty the special
         value 'nil' is returned. If the srckey and dstkey are the same the
         operation is equivalent to removing the last element from the list
-        and pusing it as first element of the list, so it's a "list
+        and pushing it as first element of the list, so it's a "list
         rotation" command.
 
         Programming patterns: safe queues
@@ -935,7 +935,7 @@ class RedisClient(RedisBase):
         """
         The info command returns different information and statistics about the
         server in an format that's simple to parse by computers and easy to red
-        by huamns.
+        by humans.
         """
         self._send('INFO')
 
@@ -963,7 +963,7 @@ class RedisClient(RedisBase):
             stmt.extend(['LIMIT', start, num])
         if get is None:
             pass
-        elif isinstance(get, basestring):
+        elif isinstance(get, str):
             stmt.extend(['GET', get])
         elif isinstance(get, list) or isinstance(get, tuple):
             for g in get:
@@ -1011,7 +1011,7 @@ class RedisClient(RedisBase):
         at key. This command overwrites any existing fields in the hash. If key
         does not exist, a new key holding a hash is created.
         """
-        fields = list(itertools.chain(*in_dict.iteritems()))
+        fields = list(itertools.chain(*iter(in_dict.items())))
         self._send('HMSET', key, *fields)
         return self.getResponse()
 
@@ -1040,7 +1040,7 @@ class RedisClient(RedisBase):
         """
         Returns the value associated with field in the hash stored at key.
         """
-        if isinstance(field, basestring):
+        if isinstance(field, str):
             self._send('HGET', key, field)
         else:
             self._send('HMGET', *([key] + field))
@@ -1048,9 +1048,9 @@ class RedisClient(RedisBase):
         def post_process(values):
             if not values:
                 return values
-            if isinstance(field, basestring):
+            if isinstance(field, str):
                 return {field: values}
-            return dict(itertools.izip(field, values))
+            return dict(zip(field, values))
 
         return self.getResponse().addCallback(post_process)
     hmget = hget
@@ -1059,7 +1059,7 @@ class RedisClient(RedisBase):
         """
         Get the value of a hash field
         """
-        assert isinstance(field, basestring)
+        assert isinstance(field, str)
         self._send('HGET', key, field)
         return self.getResponse()
 
@@ -1101,7 +1101,7 @@ class RedisClient(RedisBase):
         """
         Removes field from the hash stored at key.
         @param key : Hash key
-        @param fields : Sequence of fields to remvoe
+        @param fields : Sequence of fields to remove
         """
         if fields:
             self._send('HDEL', key, *fields)
@@ -1171,7 +1171,7 @@ class RedisClient(RedisBase):
               as (value, score) for backwards compatibility reasons.
         """
         if not kwargs and len(item_tuples) == 2 and \
-           isinstance(item_tuples[0], basestring):
+           isinstance(item_tuples[0], str):
             self._send('ZADD', key, item_tuples[1], item_tuples[0])
         elif not kwargs:
             self._send('ZADD', key, *item_tuples)
@@ -1222,9 +1222,9 @@ class RedisClient(RedisBase):
         args = [op, dstkey, len(keys)]
         # add in key names, and optionally weights
         if isinstance(keys, dict):
-            args.extend(list(keys.iterkeys()))
+            args.extend(list(keys.keys()))
             args.append('WEIGHTS')
-            args.extend(list(keys.itervalues()))
+            args.extend(list(keys.values()))
         else:
             args.extend(keys)
         if aggregate:
@@ -1444,7 +1444,8 @@ class HiRedisClient(HiRedisBase, RedisClient):
                  errors='strict'):
         super(HiRedisClient, self).__init__(db, password, charset, errors)
         self._reader = hiredis.Reader(protocolError=exceptions.InvalidData,
-                                      replyError=exceptions.ResponseError)
+                                      replyError=exceptions.ResponseError,
+                                      encoding=self.charset, errors=errors)
 
 
 class RedisSubscriber(RedisBase):
@@ -1464,22 +1465,22 @@ class RedisSubscriber(RedisBase):
         Overrides RedisBase.handleCompleteMultiBulkData to intercept published
         message events.
         """
-        if reply[0] == u"message":
+        if reply[0] == "message":
             channel, message = reply[1:]
             self.messageReceived(channel, message)
-        elif reply[0] == u"pmessage":
+        elif reply[0] == "pmessage":
             pattern, channel, message = reply[1:]
             self.messageReceived(channel, message)
-        elif reply[0] == u"subscribe":
+        elif reply[0] == "subscribe":
             channel, numSubscribed = reply[1:]
             self.channelSubscribed(channel, numSubscribed)
-        elif reply[0] == u"unsubscribe":
+        elif reply[0] == "unsubscribe":
             channel, numSubscribed = reply[1:]
             self.channelUnsubscribed(channel, numSubscribed)
-        elif reply[0] == u"psubscribe":
+        elif reply[0] == "psubscribe":
             channelPattern, numSubscribed = reply[1:]
             self.channelPatternSubscribed(channelPattern, numSubscribed)
-        elif reply[0] == u"punsubscribe":
+        elif reply[0] == "punsubscribe":
             channelPattern, numSubscribed = reply[1:]
             self.channelPatternUnsubscribed(channelPattern, numSubscribed)
         else:

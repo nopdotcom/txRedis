@@ -60,7 +60,7 @@ class RedisBase(protocol.Protocol, policies.TimeoutMixin, object):
         self.db = db if db is not None else 0
         self.password = password
         self.errors = errors
-        self._buffer = ''
+        self._buffer = b''
         self._bulk_length = None
         self._disconnected = False
         # Format of _multi_bulk_stack elements is:
@@ -90,16 +90,16 @@ class RedisBase(protocol.Protocol, policies.TimeoutMixin, object):
                 continue
 
             # wait until we have a line
-            if '\r\n' not in self._buffer:
+            if b'\r\n' not in self._buffer:
                 return
 
             # grab a line
-            line, self._buffer = self._buffer.split('\r\n', 1)
+            line, self._buffer = self._buffer.split(b'\r\n', 1)
             if len(line) == 0:
                 continue
 
             # first byte indicates reply type
-            reply_type = line[0]
+            reply_type = chr(line[0])
             reply_data = line[1:]
 
             # Error message (-)
@@ -187,7 +187,7 @@ class RedisBase(protocol.Protocol, policies.TimeoutMixin, object):
     def errorReceived(self, data):
         """Error response received."""
         if data[:4] == 'ERR ':
-            reply = exceptions.ResponseError(data[4:])
+            reply = exceptions.ResponseError(self._decode(data[4:]))
         elif data[:9] == 'NOSCRIPT ':
             reply = exceptions.NoScript(data[9:])
         elif data[:8] == 'NOTBUSY ':
@@ -204,15 +204,16 @@ class RedisBase(protocol.Protocol, policies.TimeoutMixin, object):
 
     def singleLineReceived(self, data):
         """Single line response received."""
-        if data == 'none':
+        if data == b'none':
             # should this happen here in the client?
             reply = None
         else:
-            reply = data
+            reply = self._decode(data)
 
         self.responseReceived(reply)
 
     def handleMultiBulkElement(self, element):
+        element = self._decode(element)
         top = self._multi_bulk_stack[-1]
         top[1].append(element)
         top[0] -= 1
@@ -235,6 +236,7 @@ class RedisBase(protocol.Protocol, policies.TimeoutMixin, object):
     def bulkDataReceived(self, data):
         """Bulk data response received."""
         self._bulk_length = None
+        data = self._decode(data)
         self.responseReceived(data)
 
     def multiBulkDataReceived(self):
@@ -278,16 +280,22 @@ class RedisBase(protocol.Protocol, policies.TimeoutMixin, object):
 
     def _encode(self, s):
         """Encode a value for sending to the server."""
-        if isinstance(s, str):
+        if isinstance(s, bytes):
             return s
-        if isinstance(s, unicode):
+        if isinstance(s, str):
             try:
                 return s.encode(self.charset, self.errors)
             except UnicodeEncodeError as e:
                 raise exceptions.InvalidData(
                     "Error encoding unicode value '%s': %s" % (
                         s.encode(self.charset, 'replace'), e))
-        return str(s)
+        return str(s).encode(self.charset, self.errors)
+
+    def _decode(self, s):
+        if isinstance(s, bytes):
+            return str(s, self.charset, self.errors)
+        else:
+            return s
 
     def _send(self, *args):
         """Encode and send a request
@@ -298,8 +306,10 @@ class RedisBase(protocol.Protocol, policies.TimeoutMixin, object):
         cmds = []
         for i in args:
             v = self._encode(i)
-            cmds.append('$%s\r\n%s\r\n' % (len(v), v))
-        cmd = '*%s\r\n' % len(args) + ''.join(cmds)
+            len_v = self._encode(str(len(v)))
+            cmds.append(b'$%s\r\n%s\r\n' % (len_v, v))
+        len_args = self._encode(str(len(args)))
+        cmd = b'*%s\r\n' % len_args + b''.join(cmds)
         self.transport.write(cmd)
 
     def send(self, command, *args):
@@ -337,11 +347,17 @@ class HiRedisBase(RedisBase):
         if data:
             self._reader.feed(data)
         res = self._reader.gets()
+        res = self._decode(res)
         while res is not False:
             if isinstance(res, exceptions.ResponseError):
+                s = res.args[0]
+                if s.startswith("ERR "):
+                    args0 = s[4:]
+                    res = exceptions.ResponseError(args0)
                 self._request_queue.popleft().errback(res)
             else:
-                if isinstance(res, basestring) and res == 'none':
+                if isinstance(res, str) and res == 'none':
                     res = None
                 self._request_queue.popleft().callback(res)
             res = self._reader.gets()
+            res = self._decode(res)
