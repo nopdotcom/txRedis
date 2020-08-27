@@ -283,7 +283,7 @@ class RedisBase(protocol.Protocol, policies.TimeoutMixin, object):
         if isinstance(s, unicode):
             try:
                 return s.encode(self.charset, self.errors)
-            except UnicodeEncodeError, e:
+            except UnicodeEncodeError as e:
                 raise exceptions.InvalidData(
                     "Error encoding unicode value '%s': %s" % (
                         s.encode(self.charset, 'replace'), e))
