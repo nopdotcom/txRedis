@@ -5,3 +5,4 @@
 build/*
 _trial_temp/*
 .direnv/
+txredis.egg-info
