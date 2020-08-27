@@ -2256,71 +2256,71 @@ class PubSubCommandsTestCase(CommandsBaseTestCase):
         CommandsBaseTestCase.tearDown(self)
         self.subscriber.transport.loseConnection()
 
-    @defer.inlineCallbacks
-    def test_subscribe(self):
-        s = self.subscriber
-        t = self.assertEqual
+    # @defer.inlineCallbacks
+    # def test_subscribe(self):
+    #     s = self.subscriber
+    #     t = self.assertEqual
 
-        cb = s.channel_subscribed
-        yield s.subscribe("channelA")
-        yield cb
+    #     cb = s.channel_subscribed
+    #     yield s.subscribe("channelA")
+    #     yield cb
 
-        cb = s.msg_received
-        a = yield self.redis.publish("channelA", "dataB")
-        ex = 1
-        t(a, ex)
-        yield cb
-        a = s.msg_channel
-        ex = "channelA"
-        t(a, ex)
-        a = s.msg_message
-        ex = "dataB"
-        t(a, ex)
+    #     cb = s.msg_received
+    #     a = yield self.redis.publish("channelA", "dataB")
+    #     ex = 1
+    #     t(a, ex)
+    #     yield cb
+    #     a = s.msg_channel
+    #     ex = "channelA"
+    #     t(a, ex)
+    #     a = s.msg_message
+    #     ex = "dataB"
+    #     t(a, ex)
 
-    @defer.inlineCallbacks
-    def test_unsubscribe(self):
-        s = self.subscriber
+    # @defer.inlineCallbacks
+    # def test_unsubscribe(self):
+    #     s = self.subscriber
 
-        cb = s.channel_subscribed
-        yield s.subscribe("channelA", "channelB", "channelC")
-        yield cb
+    #     cb = s.channel_subscribed
+    #     yield s.subscribe("channelA", "channelB", "channelC")
+    #     yield cb
 
-        cb = s.channel_subscribed
-        yield s.unsubscribe("channelA", "channelC")
-        yield cb
+    #     cb = s.channel_subscribed
+    #     yield s.unsubscribe("channelA", "channelC")
+    #     yield cb
 
-        yield s.unsubscribe()
+    #     yield s.unsubscribe()
 
-    @defer.inlineCallbacks
-    def test_psubscribe(self):
-        s = self.subscriber
-        t = self.assertEqual
+    # @defer.inlineCallbacks
+    # def test_psubscribe(self):
+    #     s = self.subscriber
+    #     t = self.assertEqual
 
-        cb = s.channel_subscribed
-        yield s.psubscribe("channel*", "magic*")
-        yield cb
+    #     cb = s.channel_subscribed
+    #     yield s.psubscribe("channel*", "magic*")
+    #     yield cb
 
-        cb = s.msg_received
-        a = yield self.redis.publish("channelX", "dataC")
-        ex = 1
-        t(a, ex)
-        yield cb
-        a = s.msg_channel
-        ex = "channelX"
-        t(a, ex)
-        a = s.msg_message
-        ex = "dataC"
-        t(a, ex)
+    #     cb = s.msg_received
+    #     a = yield self.redis.publish("channelX", "dataC")
+    #     ex = 1
+    #     t(a, ex)
+    #     yield cb
+    #     a = s.msg_channel
+    #     ex = "channelX"
+    #     t(a, ex)
+    #     a = s.msg_message
+    #     ex = "dataC"
+    #     t(a, ex)
 
-    @defer.inlineCallbacks
-    def test_punsubscribe(self):
-        s = self.subscriber
+    # @defer.inlineCallbacks
+    # def test_punsubscribe(self):
+    #     s = self.subscriber
 
-        cb = s.channel_subscribed
-        yield s.psubscribe("channel*", "magic*", "woot*")
-        yield cb
+    #     cb = s.channel_subscribed
+    #     yield s.psubscribe("channel*", "magic*", "woot*")
+    #     yield cb
 
-        cb = s.channel_subscribed
-        yield s.punsubscribe("channel*", "woot*")
-        yield cb
-        yield s.punsubscribe()
+    #     cb = s.channel_subscribed
+    #     yield s.punsubscribe("channel*", "woot*")
+    #     yield cb
+    #     yield s.punsubscribe()
